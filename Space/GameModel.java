@@ -105,7 +105,8 @@ public class GameModel {
             playerBulletX = playerX + PLAYER_WIDTH / 2 - 2;
             playerBulletY = PLAYER_Y;
             playerBulletActive = true;
-            muzzleTicks = 5; // Show flash for 5 ticks
+            muzzleTicks = 5; 
+            SoundEffect.playFire();
         }
     }
 
@@ -155,6 +156,7 @@ public class GameModel {
         level++;
         playerBulletActive = false;
         alienBullets.clear();
+        SoundEffect.playLevelUp();
         resetLevel();
     }
 
@@ -219,8 +221,9 @@ public class GameModel {
                 alienBullets.remove(i--);
             } else if (intersects(b.x, b.y, 4, 10, playerX, PLAYER_Y, PLAYER_WIDTH, PLAYER_HEIGHT)) {
                 lives--;
-                shakeTicks = 15; // Heavy shake
+                shakeTicks = 15; 
                 explosions.add(new Explosion(playerX + PLAYER_WIDTH/2, PLAYER_Y + PLAYER_HEIGHT/2, 30));
+                SoundEffect.playPlayerHit();
                 alienBullets.remove(i--);
                 if (lives <= 0) gameOver = true;
             }
@@ -237,8 +240,9 @@ public class GameModel {
                         aliensAlive[r][c] = false;
                         playerBulletActive = false;
                         score += 10;
-                        shakeTicks = 5; // Light shake
+                        shakeTicks = 5; 
                         explosions.add(new Explosion(ax + ALIEN_WIDTH/2, ay + ALIEN_HEIGHT/2, 15));
+                        SoundEffect.playExplosion();
                         return;
                     }
                 }
@@ -250,12 +254,10 @@ public class GameModel {
         return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
     }
 
-    // Getters for FX
     public int getMuzzleTicks() { return muzzleTicks; }
     public int getShakeTicks() { return shakeTicks; }
     public List<Explosion> getExplosions() { return explosions; }
 
-    // Other Getters
     public int getPlayerX() { return playerX; }
     public int getLives() { return lives; }
     public int getScore() { return score; }
