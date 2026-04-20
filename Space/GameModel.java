@@ -30,6 +30,7 @@ public class GameModel {
     private int playerX;
     private int lives;
     private int score;
+    private int level;
     private boolean gameOver;
 
     // Player Bullet State (one at a time)
@@ -50,6 +51,7 @@ public class GameModel {
 
     public GameModel() {
         alienBullets = new ArrayList<>();
+        level = 1;
         initGame();
     }
 
@@ -57,10 +59,14 @@ public class GameModel {
         playerX = WIDTH / 2 - PLAYER_WIDTH / 2;
         lives = 3;
         score = 0;
+        level = 1;
         gameOver = false;
         playerBulletActive = false;
         alienBullets.clear();
+        resetLevel();
+    }
 
+    private void resetLevel() {
         aliensAlive = new boolean[ALIEN_ROWS][ALIEN_COLS];
         for (int r = 0; r < ALIEN_ROWS; r++) {
             for (int c = 0; c < ALIEN_COLS; c++) {
@@ -71,6 +77,8 @@ public class GameModel {
         alienX = 50;
         alienY = 50;
         alienDirection = 1;
+        // Increase speed slightly per level
+        currentAlienSpeedX = ALIEN_INITIAL_SPEED_X + (level - 1) * 0.5;
     }
 
     public void movePlayerLeft() {
@@ -114,12 +122,29 @@ public class GameModel {
         updateAlienMovement();
 
         // 3. Fire Alien Bullets
-        if (random.nextDouble() < 0.02) {
+        // Probability increases slightly with level
+        if (random.nextDouble() < 0.02 + (level * 0.005)) {
             fireAlienBullet();
         }
 
         // 4. Update Alien Bullets and Detect Player Collisions
         updateAlienBullets();
+
+        // 5. Check if all aliens are dead
+        checkLevelCleared();
+    }
+
+    private void checkLevelCleared() {
+        for (int r = 0; r < ALIEN_ROWS; r++) {
+            for (int c = 0; c < ALIEN_COLS; c++) {
+                if (aliensAlive[r][c]) return;
+            }
+        }
+        // All dead! Start next level
+        level++;
+        playerBulletActive = false;
+        alienBullets.clear();
+        resetLevel();
     }
 
     private void updateAlienMovement() {
@@ -140,7 +165,7 @@ public class GameModel {
             }
         }
 
-        if (!anyAliens) return; // Level cleared
+        if (!anyAliens) return; 
 
         // Check if movement hits edge
         if (alienDirection == 1 && maxX + moveStep > WIDTH - 10) {
@@ -228,6 +253,7 @@ public class GameModel {
     public int getPlayerX() { return playerX; }
     public int getLives() { return lives; }
     public int getScore() { return score; }
+    public int getLevel() { return level; }
     public boolean isGameOver() { return gameOver; }
     public boolean[][] getAliensAlive() { return aliensAlive; }
     public int getAlienX() { return (int) alienX; }

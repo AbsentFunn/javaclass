@@ -81,6 +81,7 @@ public class GameView extends JPanel {
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("Monospaced", Font.BOLD, 20));
         g2.drawString("SCORE: " + model.getScore(), 20, 30);
+        g2.drawString("LEVEL: " + model.getLevel(), GameModel.WIDTH / 2 - 50, 30);
         g2.drawString("LIVES: " + model.getLives(), GameModel.WIDTH - 130, 30);
     }
 
