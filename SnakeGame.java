@@ -29,9 +29,9 @@ class GamePanel extends JPanel implements ActionListener {
 
     // Unique powerup state
     private int ghostTicks = 0;
-    private int mirrorTicks = 0;
-    private int freezeTicks = 0;
-    private boolean magnetActive = false;
+    private int magnetTicks = 0;
+    private int slowTicks = 0;
+    private boolean shieldActive = false;
 
     private int direction = KeyEvent.VK_RIGHT;
     private int nextDirection = KeyEvent.VK_RIGHT;
@@ -39,9 +39,7 @@ class GamePanel extends JPanel implements ActionListener {
     private boolean gameOver = false;
     private int score = 0;
     private Timer timer;
-    private int baseDelay = 120;
-    private int currentDelay = 120;
-    // Remove old powerup timers
+    private final int baseDelay = 120;
 
     public GamePanel() {
         setPreferredSize(new Dimension(BOARD_SIZE, BOARD_SIZE));
@@ -62,17 +60,16 @@ class GamePanel extends JPanel implements ActionListener {
         score = 0;
         gameOver = false;
         ghostTicks = 0;
-        mirrorTicks = 0;
-        freezeTicks = 0;
-        magnetActive = false;
-        currentDelay = baseDelay;
+        magnetTicks = 0;
+        slowTicks = 0;
+        shieldActive = false;
+        
         powerups.clear();
-
         spawnFood();
         spawnPowerups();
 
         if (timer != null) timer.stop();
-        timer = new Timer(currentDelay, this);
+        timer = new Timer(baseDelay, this);
         timer.start();
         repaint();
     }
@@ -109,19 +106,11 @@ class GamePanel extends JPanel implements ActionListener {
     }
 
     private void move() {
-        int moveDir = direction;
-        if (mirrorTicks > 0) {
-            // Reverse controls
-            if (moveDir == KeyEvent.VK_LEFT) moveDir = KeyEvent.VK_RIGHT;
-            else if (moveDir == KeyEvent.VK_RIGHT) moveDir = KeyEvent.VK_LEFT;
-            else if (moveDir == KeyEvent.VK_UP) moveDir = KeyEvent.VK_DOWN;
-            else if (moveDir == KeyEvent.VK_DOWN) moveDir = KeyEvent.VK_UP;
-        }
         direction = nextDirection;
         Point head = snake.getFirst();
         Point newHead = new Point(head);
 
-        switch (moveDir) {
+        switch (direction) {
             case KeyEvent.VK_LEFT:  newHead.x--; break;
             case KeyEvent.VK_RIGHT: newHead.x++; break;
             case KeyEvent.VK_UP:    newHead.y--; break;
@@ -130,6 +119,14 @@ class GamePanel extends JPanel implements ActionListener {
 
         newHead.x = (newHead.x + GRID_SIZE) % GRID_SIZE;
         newHead.y = (newHead.y + GRID_SIZE) % GRID_SIZE;
+
+        // Magnet logic: move food towards head
+        if (magnetTicks > 0) {
+            if (food.x < newHead.x) food.x++;
+            else if (food.x > newHead.x) food.x--;
+            if (food.y < newHead.y) food.y++;
+            else if (food.y > newHead.y) food.y--;
+        }
 
         boolean ateFood = newHead.equals(food);
         Powerup hitPowerup = null;
@@ -145,17 +142,23 @@ class GamePanel extends JPanel implements ActionListener {
         }
 
         boolean selfHit = snake.contains(newHead);
-        if (selfHit && ghostTicks == 0) {
-            gameOver = true;
-            snake.addFirst(newHead);
-            return;
+        if (selfHit) {
+            if (ghostTicks > 0) {
+                // Safe in ghost mode
+            } else if (shieldActive) {
+                shieldActive = false;
+                ghostTicks = 20; // Brief invincibility after shield break
+            } else {
+                gameOver = true;
+                snake.addFirst(newHead);
+                return;
+            }
         }
 
         snake.addFirst(newHead);
 
         if (ateFood) {
             score += 10;
-            if (magnetActive) magnetActive = false;
             spawnFood();
             spawnPowerups();
         }
@@ -167,17 +170,14 @@ class GamePanel extends JPanel implements ActionListener {
 
         // Powerup timers
         if (ghostTicks > 0) ghostTicks--;
-        if (mirrorTicks > 0) mirrorTicks--;
-        if (freezeTicks > 0) freezeTicks--;
+        if (magnetTicks > 0) magnetTicks--;
+        if (slowTicks > 0) {
+            slowTicks--;
+            if (slowTicks == 0) updateTimer();
+        }
     }
 
     private void spawnFood() {
-        if (magnetActive) {
-            // Move fruit to snake head
-            Point head = snake.getFirst();
-            food = new Point(head.x, head.y);
-            return;
-        }
         int x, y;
         boolean onSnakeOrPowerup;
         do {
@@ -193,7 +193,6 @@ class GamePanel extends JPanel implements ActionListener {
     }
 
     private void spawnPowerups() {
-        if (freezeTicks > 0) return; // Freeze disables new powerups
         powerups.clear();
         java.util.Random rand = new java.util.Random();
         int numPowerups = 2 + rand.nextInt(2); // 2 or 3 powerups
@@ -216,30 +215,17 @@ class GamePanel extends JPanel implements ActionListener {
 
     private void applyPowerup(Powerup p) {
         switch (p.type) {
-            case GHOST:
-                ghostTicks = 40;
-                break;
-            case PORTAL:
-                // Teleport head to random empty cell
-                java.util.Random rand = new java.util.Random();
-                Point newPos;
-                do {
-                    int x = rand.nextInt(GRID_SIZE);
-                    int y = rand.nextInt(GRID_SIZE);
-                    newPos = new Point(x, y);
-                } while (snake.contains(newPos) || newPos.equals(food));
-                snake.addFirst(newPos);
-                snake.removeLast();
-                break;
-            case MAGNET:
-                magnetActive = true;
-                break;
-            case MIRROR:
-                mirrorTicks = 40;
-                break;
-            case FREEZE:
-                freezeTicks = 40;
-                break;
+            case GHOST:  ghostTicks = 60; break;
+            case MAGNET: magnetTicks = 60; break;
+            case SCORE:  score += 50; break;
+            case SLOW:   slowTicks = 60; updateTimer(); break;
+            case SHIELD: shieldActive = true; break;
+        }
+    }
+
+    private void updateTimer() {
+        if (timer != null) {
+            timer.setDelay(slowTicks > 0 ? (int)(baseDelay * 1.5) : baseDelay);
         }
     }
 
@@ -258,21 +244,11 @@ class GamePanel extends JPanel implements ActionListener {
         // Draw Powerups
         for (Powerup p : powerups) {
             switch (p.type) {
-                case GHOST:
-                    g2.setColor(new Color(180, 255, 255)); // Cyan
-                    break;
-                case PORTAL:
-                    g2.setColor(new Color(255, 120, 255)); // Magenta
-                    break;
-                case MAGNET:
-                    g2.setColor(new Color(255, 200, 80)); // Yellow
-                    break;
-                case MIRROR:
-                    g2.setColor(new Color(255, 120, 80)); // Orange
-                    break;
-                case FREEZE:
-                    g2.setColor(new Color(120, 120, 255)); // Blue
-                    break;
+                case GHOST:  g2.setColor(new Color(180, 255, 255)); break; // Cyan
+                case MAGNET: g2.setColor(new Color(255, 255, 100)); break; // Yellow
+                case SCORE:  g2.setColor(new Color(100, 255, 100)); break; // Green
+                case SLOW:   g2.setColor(new Color(120, 120, 255)); break; // Blue
+                case SHIELD: g2.setColor(new Color(255, 100, 255)); break; // Magenta
             }
             int px = p.pos.x * CELL_SIZE + padding;
             int py = p.pos.y * CELL_SIZE + padding;
@@ -302,22 +278,22 @@ class GamePanel extends JPanel implements ActionListener {
         g2.setColor(Color.WHITE);
         g2.setFont(new Font("SansSerif", Font.BOLD, 18));
         g2.drawString("Score: " + score, 15, 30);
-        int y = 55;
+        int yStatus = 55;
         if (ghostTicks > 0) {
             g2.setColor(new Color(180, 255, 255));
-            g2.drawString("Ghost!", 15, y); y += 25;
+            g2.drawString("Ghost!", 15, yStatus); yStatus += 25;
         }
-        if (magnetActive) {
-            g2.setColor(new Color(255, 200, 80));
-            g2.drawString("Magnet!", 15, y); y += 25;
+        if (magnetTicks > 0) {
+            g2.setColor(new Color(255, 255, 100));
+            g2.drawString("Magnet!", 15, yStatus); yStatus += 25;
         }
-        if (mirrorTicks > 0) {
-            g2.setColor(new Color(255, 120, 80));
-            g2.drawString("Mirror Controls!", 15, y); y += 25;
-        }
-        if (freezeTicks > 0) {
+        if (slowTicks > 0) {
             g2.setColor(new Color(120, 120, 255));
-            g2.drawString("Freeze!", 15, y); y += 25;
+            g2.drawString("Slow Motion!", 15, yStatus); yStatus += 25;
+        }
+        if (shieldActive) {
+            g2.setColor(new Color(255, 100, 255));
+            g2.drawString("Shield Active!", 15, yStatus); yStatus += 25;
         }
 
         if (gameOver) {
@@ -337,14 +313,14 @@ class GamePanel extends JPanel implements ActionListener {
 
     // Powerup types and class
     enum PowerupType {
-        GHOST, PORTAL, MAGNET, MIRROR, FREEZE;
+        GHOST, MAGNET, SCORE, SLOW, SHIELD;
         public String shortName() {
             switch (this) {
-                case GHOST: return "GHO";
-                case PORTAL: return "POR";
+                case GHOST:  return "GHO";
                 case MAGNET: return "MAG";
-                case MIRROR: return "MIR";
-                case FREEZE: return "FRZ";
+                case SCORE:  return "SCR";
+                case SLOW:   return "SLO";
+                case SHIELD: return "SHD";
             }
             return "?";
         }
@@ -357,6 +333,4 @@ class GamePanel extends JPanel implements ActionListener {
             this.pos = pos;
         }
     }
-
-    // (removed duplicate PowerupType and Powerup classes)
 }
