@@ -40,10 +40,15 @@ public class GameModel {
 
     // Alien State
     private boolean[][] aliensAlive;
-    private double alienX; // Use double for smoother formation movement logic
+    private double alienX;
     private double alienY;
-    private int alienDirection = 1; // 1 for right, -1 for left
+    private int alienDirection = 1;
     private double currentAlienSpeedX = ALIEN_INITIAL_SPEED_X;
+
+    // Effects State
+    private int muzzleTicks = 0;
+    private int shakeTicks = 0;
+    private final List<Explosion> explosions = new ArrayList<>();
 
     // Alien Projectiles
     private final List<Point> alienBullets;
@@ -63,6 +68,9 @@ public class GameModel {
         gameOver = false;
         playerBulletActive = false;
         alienBullets.clear();
+        explosions.clear();
+        muzzleTicks = 0;
+        shakeTicks = 0;
         resetLevel();
     }
 
@@ -73,11 +81,9 @@ public class GameModel {
                 aliensAlive[r][c] = true;
             }
         }
-
         alienX = 50;
         alienY = 50;
         alienDirection = 1;
-        // Increase speed slightly per level
         currentAlienSpeedX = ALIEN_INITIAL_SPEED_X + (level - 1) * 0.5;
     }
 
@@ -99,12 +105,10 @@ public class GameModel {
             playerBulletX = playerX + PLAYER_WIDTH / 2 - 2;
             playerBulletY = PLAYER_Y;
             playerBulletActive = true;
+            muzzleTicks = 5; // Show flash for 5 ticks
         }
     }
 
-    /**
-     * Advances the game state by one tick.
-     */
     public void update() {
         if (gameOver) return;
 
@@ -122,7 +126,6 @@ public class GameModel {
         updateAlienMovement();
 
         // 3. Fire Alien Bullets
-        // Probability increases slightly with level
         if (random.nextDouble() < 0.02 + (level * 0.005)) {
             fireAlienBullet();
         }
@@ -130,7 +133,16 @@ public class GameModel {
         // 4. Update Alien Bullets and Detect Player Collisions
         updateAlienBullets();
 
-        // 5. Check if all aliens are dead
+        // 5. Effects Update
+        if (muzzleTicks > 0) muzzleTicks--;
+        if (shakeTicks > 0) shakeTicks--;
+        for (int i = 0; i < explosions.size(); i++) {
+            Explosion e = explosions.get(i);
+            e.ticks--;
+            if (e.ticks <= 0) explosions.remove(i--);
+        }
+
+        // 6. Check if all aliens are dead
         checkLevelCleared();
     }
 
@@ -140,7 +152,6 @@ public class GameModel {
                 if (aliensAlive[r][c]) return;
             }
         }
-        // All dead! Start next level
         level++;
         playerBulletActive = false;
         alienBullets.clear();
@@ -150,8 +161,6 @@ public class GameModel {
     private void updateAlienMovement() {
         double moveStep = currentAlienSpeedX * alienDirection;
         boolean hitEdge = false;
-
-        // Determine boundaries based on remaining aliens
         double minX = WIDTH, maxX = 0;
         boolean anyAliens = false;
         for (int r = 0; r < ALIEN_ROWS; r++) {
@@ -164,20 +173,14 @@ public class GameModel {
                 }
             }
         }
-
         if (!anyAliens) return; 
 
-        // Check if movement hits edge
-        if (alienDirection == 1 && maxX + moveStep > WIDTH - 10) {
-            hitEdge = true;
-        } else if (alienDirection == -1 && minX + moveStep < 10) {
-            hitEdge = true;
-        }
+        if (alienDirection == 1 && maxX + moveStep > WIDTH - 10) hitEdge = true;
+        else if (alienDirection == -1 && minX + moveStep < 10) hitEdge = true;
 
         if (hitEdge) {
             alienDirection *= -1;
             alienY += ALIEN_DROP_Y;
-            // Check if aliens reach the player
             if (alienY + ALIEN_ROWS * (ALIEN_HEIGHT + ALIEN_SPACING_Y) > PLAYER_Y) {
                 gameOver = true;
             }
@@ -187,7 +190,6 @@ public class GameModel {
     }
 
     private void fireAlienBullet() {
-        // Pick a random column that has at least one alien
         List<Integer> activeCols = new ArrayList<>();
         for (int c = 0; c < ALIEN_COLS; c++) {
             for (int r = 0; r < ALIEN_ROWS; r++) {
@@ -198,9 +200,7 @@ public class GameModel {
             }
         }
         if (activeCols.isEmpty()) return;
-
         int col = activeCols.get(random.nextInt(activeCols.size()));
-        // Find the lowest alien in that column to fire from
         for (int r = ALIEN_ROWS - 1; r >= 0; r--) {
             if (aliensAlive[r][col]) {
                 int bx = (int) (alienX + col * (ALIEN_WIDTH + ALIEN_SPACING_X) + ALIEN_WIDTH / 2);
@@ -215,15 +215,14 @@ public class GameModel {
         for (int i = 0; i < alienBullets.size(); i++) {
             Point b = alienBullets.get(i);
             b.y += 5;
-
             if (b.y > HEIGHT) {
                 alienBullets.remove(i--);
             } else if (intersects(b.x, b.y, 4, 10, playerX, PLAYER_Y, PLAYER_WIDTH, PLAYER_HEIGHT)) {
                 lives--;
+                shakeTicks = 15; // Heavy shake
+                explosions.add(new Explosion(playerX + PLAYER_WIDTH/2, PLAYER_Y + PLAYER_HEIGHT/2, 30));
                 alienBullets.remove(i--);
-                if (lives <= 0) {
-                    gameOver = true;
-                }
+                if (lives <= 0) gameOver = true;
             }
         }
     }
@@ -238,7 +237,9 @@ public class GameModel {
                         aliensAlive[r][c] = false;
                         playerBulletActive = false;
                         score += 10;
-                        return; // One hit per bullet
+                        shakeTicks = 5; // Light shake
+                        explosions.add(new Explosion(ax + ALIEN_WIDTH/2, ay + ALIEN_HEIGHT/2, 15));
+                        return;
                     }
                 }
             }
@@ -249,7 +250,12 @@ public class GameModel {
         return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
     }
 
-    // --- Getters for View Rendering ---
+    // Getters for FX
+    public int getMuzzleTicks() { return muzzleTicks; }
+    public int getShakeTicks() { return shakeTicks; }
+    public List<Explosion> getExplosions() { return explosions; }
+
+    // Other Getters
     public int getPlayerX() { return playerX; }
     public int getLives() { return lives; }
     public int getScore() { return score; }
@@ -263,9 +269,15 @@ public class GameModel {
     public boolean isPlayerBulletActive() { return playerBulletActive; }
     public List<Point> getAlienBullets() { return alienBullets; }
 
-    // Simple Point helper class
     public static class Point {
         public int x, y;
         public Point(int x, int y) { this.x = x; this.y = y; }
+    }
+
+    public static class Explosion {
+        public int x, y, ticks, maxTicks;
+        public Explosion(int x, int y, int duration) {
+            this.x = x; this.y = y; this.ticks = duration; this.maxTicks = duration;
+        }
     }
 }
