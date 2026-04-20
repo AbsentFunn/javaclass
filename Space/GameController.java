@@ -1,8 +1,7 @@
-// GameController.java
-// This class handles user input, the game loop, and connects the model and view.
+package Space;
+
 import javax.swing.*;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
+import java.awt.event.*;
 
 public class GameController {
     private final GameModel model;
@@ -26,10 +25,14 @@ public class GameController {
                 if (key == KeyEvent.VK_LEFT) leftPressed = true;
                 if (key == KeyEvent.VK_RIGHT) rightPressed = true;
                 if (key == KeyEvent.VK_SPACE) {
-                    if (model.isGameOver()) {
-                        // Optional: Restart logic could go here
-                    } else {
+                    if (!model.isGameOver()) {
                         model.firePlayerBullet();
+                    }
+                }
+                if (key == KeyEvent.VK_ENTER) {
+                    if (model.isGameOver()) {
+                        model.initGame();
+                        timer.start();
                     }
                 }
             }

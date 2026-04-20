@@ -1,6 +1,5 @@
-// GameView.java
-// This class handles the rendering of the Space Invaders game.
-// it reads from the GameModel and uses Swing/AWT for drawing.
+package Space;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -102,7 +101,7 @@ public class GameView extends JPanel {
         fm = g2.getFontMetrics();
         g2.drawString(scoreMsg, (GameModel.WIDTH - fm.stringWidth(scoreMsg)) / 2, y + 50);
         
-        String restartMsg = "Press Space to Restart";
+        String restartMsg = "Press Enter to Restart";
         fm = g2.getFontMetrics();
         g2.drawString(restartMsg, (GameModel.WIDTH - fm.stringWidth(restartMsg)) / 2, y + 100);
     }

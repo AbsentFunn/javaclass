@@ -1,6 +1,5 @@
-// GameModel.java
-// This class will manage the game state, logic, and data for Space Invaders.
-// It will not import or use any Swing classes.
+package Space;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -50,16 +49,17 @@ public class GameModel {
     private final Random random = new Random();
 
     public GameModel() {
-        initGame();
         alienBullets = new ArrayList<>();
+        initGame();
     }
 
-    private void initGame() {
+    public void initGame() {
         playerX = WIDTH / 2 - PLAYER_WIDTH / 2;
         lives = 3;
         score = 0;
         gameOver = false;
         playerBulletActive = false;
+        alienBullets.clear();
 
         aliensAlive = new boolean[ALIEN_ROWS][ALIEN_COLS];
         for (int r = 0; r < ALIEN_ROWS; r++) {
@@ -70,6 +70,7 @@ public class GameModel {
 
         alienX = 50;
         alienY = 50;
+        alienDirection = 1;
     }
 
     public void movePlayerLeft() {
@@ -176,7 +177,7 @@ public class GameModel {
         int col = activeCols.get(random.nextInt(activeCols.size()));
         // Find the lowest alien in that column to fire from
         for (int r = ALIEN_ROWS - 1; r >= 0; r--) {
-            if (aliensAlive[r][c]) {
+            if (aliensAlive[r][col]) {
                 int bx = (int) (alienX + col * (ALIEN_WIDTH + ALIEN_SPACING_X) + ALIEN_WIDTH / 2);
                 int by = (int) (alienY + r * (ALIEN_HEIGHT + ALIEN_SPACING_Y) + ALIEN_HEIGHT);
                 alienBullets.add(new Point(bx, by));
