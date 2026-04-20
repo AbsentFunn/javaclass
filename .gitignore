@@ -1,3 +1,4 @@
+*.class
 Space/GameController.class
 Space/GameModel.class
 Space/GameView.class
