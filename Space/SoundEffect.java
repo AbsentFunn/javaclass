@@ -14,7 +14,8 @@ public class SoundEffect {
     private static Clip[] firePool = new Clip[POOL_SIZE];
     private static Clip[] explosionPool = new Clip[POOL_SIZE];
     private static Clip[] hitPool = new Clip[POOL_SIZE];
-    private static Clip[] levelPool = new Clip[1]; // Level up doesn't overlap often
+    private static Clip[] levelPool = new Clip[1];
+    private static Clip[] powerupPool = new Clip[1];
 
     private static int firePtr = 0;
     private static int explosionPtr = 0;
@@ -29,6 +30,7 @@ public class SoundEffect {
             byte[] explosionBuf = generateDeepRumble(0.25);
             byte[] hitBuf = generateSweep(80, 30, 0.4);
             byte[] levelBuf = generateLevelMelody();
+            byte[] powerupBuf = generatePowerupMelody();
 
             // Initialize pools
             for (int i = 0; i < POOL_SIZE; i++) {
@@ -37,6 +39,7 @@ public class SoundEffect {
                 hitPool[i] = createClip(af, hitBuf);
             }
             levelPool[0] = createClip(af, levelBuf);
+            powerupPool[0] = createClip(af, powerupBuf);
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -47,6 +50,7 @@ public class SoundEffect {
     public static void playExplosion() { playFromPool(explosionPool, explosionPtr++ % POOL_SIZE); }
     public static void playPlayerHit() { playFromPool(hitPool, hitPtr++ % POOL_SIZE); }
     public static void playLevelUp() { playFromPool(levelPool, 0); }
+    public static void playPowerup() { playFromPool(powerupPool, 0); }
 
     private static void playFromPool(Clip[] pool, int idx) {
         Clip c = pool[idx];
@@ -101,6 +105,15 @@ public class SoundEffect {
         System.arraycopy(t1, 0, combined, 0, t1.length);
         System.arraycopy(t2, 0, combined, t1.length, t2.length);
         System.arraycopy(t3, 0, combined, t1.length + t2.length, t3.length);
+        return combined;
+    }
+
+    private static byte[] generatePowerupMelody() {
+        byte[] t1 = generateTone(440, 0.1);
+        byte[] t2 = generateTone(880, 0.1);
+        byte[] combined = new byte[t1.length + t2.length];
+        System.arraycopy(t1, 0, combined, 0, t1.length);
+        System.arraycopy(t2, 0, combined, t1.length, t2.length);
         return combined;
     }
 

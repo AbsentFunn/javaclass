@@ -21,6 +21,7 @@ public class GameController {
         view.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
+                if (model.isPowerupActive()) return; // Disable input during powerup popup
                 int key = e.getKeyCode();
                 if (key == KeyEvent.VK_LEFT) leftPressed = true;
                 if (key == KeyEvent.VK_RIGHT) rightPressed = true;
@@ -39,11 +40,23 @@ public class GameController {
 
             @Override
             public void keyReleased(KeyEvent e) {
+                if (model.isPowerupActive()) return;
                 int key = e.getKeyCode();
                 if (key == KeyEvent.VK_LEFT) leftPressed = false;
                 if (key == KeyEvent.VK_RIGHT) rightPressed = false;
             }
         });
+
+        // Listen for powerup popup to reset movement keys
+        Timer popupResetTimer = new Timer(16, evt -> {
+            if (model.isPowerupActive()) {
+                if (leftPressed || rightPressed) {
+                    leftPressed = false;
+                    rightPressed = false;
+                }
+            }
+        });
+        popupResetTimer.start();
     }
 
     private void setupGameLoop() {
