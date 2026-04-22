@@ -1,119 +1,126 @@
 package Space;
 
 import javax.sound.sampled.*;
+import java.io.ByteArrayInputStream;
 
 /**
- * Programmatic chiptune sound effect generator.
- * Optimized for smoother "background" levels and softer attacks.
+ * Zero-latency sound effect engine.
+ * Pre-generates all audio and uses a pool of pre-opened clips.
  */
 public class SoundEffect {
     private static final int SAMPLE_RATE = 22050;
-    private static final double MASTER_VOLUME = 0.2; // 20% volume for background feel
-    private static final double ATTACK_TIME = 0.01; // 10ms fade-in to soften start
+    private static final int POOL_SIZE = 5; // Allow 5 instances of each sound to overlap
 
-    public static void playFire() {
-        play(generateSweep(400, 100, 0.1, WaveType.SQUARE));
-    }
+    private static Clip[] firePool = new Clip[POOL_SIZE];
+    private static Clip[] explosionPool = new Clip[POOL_SIZE];
+    private static Clip[] hitPool = new Clip[POOL_SIZE];
+    private static Clip[] levelPool = new Clip[1]; // Level up doesn't overlap often
 
-    public static void playExplosion() {
-        play(generateNoise(0.15));
-    }
+    private static int firePtr = 0;
+    private static int explosionPtr = 0;
+    private static int hitPtr = 0;
 
-    public static void playPlayerHit() {
-        play(generateSweep(150, 50, 0.3, WaveType.SAWTOOTH));
-    }
-
-    public static void playLevelUp() {
-        new Thread(() -> {
-            play(generateTone(440, 0.1, WaveType.SINE));
-            play(generateTone(554, 0.1, WaveType.SINE));
-            play(generateTone(659, 0.2, WaveType.SINE));
-        }).start();
-    }
-
-    private enum WaveType { SINE, SQUARE, SAWTOOTH }
-
-    private static byte[] applyEnvelope(byte[] buf) {
-        int samples = buf.length;
-        int attackSamples = (int) (ATTACK_TIME * SAMPLE_RATE);
-        
-        for (int i = 0; i < samples; i++) {
-            double envelope = 1.0;
+    static {
+        try {
+            AudioFormat af = new AudioFormat(SAMPLE_RATE, 8, 1, true, false);
             
-            // Attack (Fade-in)
-            if (i < attackSamples) {
-                envelope = (double) i / attackSamples;
-            } 
-            // Decay (Fade-out)
-            else {
-                envelope = 1.0 - ((double) (i - attackSamples) / (samples - attackSamples));
+            // Pre-generate buffers
+            byte[] fireBuf = generateSweep(120, 60, 0.12);
+            byte[] explosionBuf = generateDeepRumble(0.25);
+            byte[] hitBuf = generateSweep(80, 30, 0.4);
+            byte[] levelBuf = generateLevelMelody();
+
+            // Initialize pools
+            for (int i = 0; i < POOL_SIZE; i++) {
+                firePool[i] = createClip(af, fireBuf);
+                explosionPool[i] = createClip(af, explosionBuf);
+                hitPool[i] = createClip(af, hitBuf);
             }
+            levelPool[0] = createClip(af, levelBuf);
             
-            double value = (buf[i] / 128.0) * envelope * MASTER_VOLUME;
-            buf[i] = (byte) (value * 127);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        return buf;
     }
 
-    private static byte[] generateTone(double freq, double duration, WaveType type) {
-        int samples = (int) (duration * SAMPLE_RATE);
-        byte[] buf = new byte[samples];
-        for (int i = 0; i < samples; i++) {
-            double t = (double) i / SAMPLE_RATE;
-            double angle = 2.0 * Math.PI * freq * t;
-            double value = 0;
-            switch (type) {
-                case SINE: value = Math.sin(angle); break;
-                case SQUARE: value = Math.sin(angle) > 0 ? 1 : -1; break;
-                case SAWTOOTH: value = 2.0 * (t * freq - Math.floor(0.5 + t * freq)); break;
-            }
-            buf[i] = (byte) (value * 127);
-        }
-        return applyEnvelope(buf);
+    public static void playFire() { playFromPool(firePool, firePtr++ % POOL_SIZE); }
+    public static void playExplosion() { playFromPool(explosionPool, explosionPtr++ % POOL_SIZE); }
+    public static void playPlayerHit() { playFromPool(hitPool, hitPtr++ % POOL_SIZE); }
+    public static void playLevelUp() { playFromPool(levelPool, 0); }
+
+    private static void playFromPool(Clip[] pool, int idx) {
+        Clip c = pool[idx];
+        if (c == null) return;
+        if (c.isRunning()) c.stop();
+        c.setFramePosition(0);
+        c.start();
     }
 
-    private static byte[] generateSweep(double startFreq, double endFreq, double duration, WaveType type) {
+    private static Clip createClip(AudioFormat af, byte[] buf) throws Exception {
+        Clip clip = AudioSystem.getClip();
+        clip.open(af, buf, 0, buf.length);
+        return clip;
+    }
+
+    // --- Audio Generation Logic ---
+
+    private static byte[] generateSweep(double startFreq, double endFreq, double duration) {
         int samples = (int) (duration * SAMPLE_RATE);
         byte[] buf = new byte[samples];
         for (int i = 0; i < samples; i++) {
             double progress = (double) i / samples;
             double freq = startFreq + (endFreq - startFreq) * progress;
             double t = (double) i / SAMPLE_RATE;
-            double value = 0;
-            double angle = 2.0 * Math.PI * freq * t; 
-            switch (type) {
-                case SINE: value = Math.sin(angle); break;
-                case SQUARE: value = Math.sin(angle) > 0 ? 1 : -1; break;
-                case SAWTOOTH: value = 2.0 * (t * freq - Math.floor(0.5 + t * freq)); break;
-            }
+            double value = Math.sin(2.0 * Math.PI * freq * t);
             buf[i] = (byte) (value * 127);
         }
-        return applyEnvelope(buf);
+        return applyEnvelope(buf, 0.25); // Lowered from 0.4
     }
 
-    private static byte[] generateNoise(double duration) {
+    private static byte[] generateDeepRumble(double duration) {
         int samples = (int) (duration * SAMPLE_RATE);
         byte[] buf = new byte[samples];
         java.util.Random rand = new java.util.Random();
+        double lastValue = 0;
         for (int i = 0; i < samples; i++) {
-            buf[i] = (byte) (rand.nextInt(256) - 128);
+            double white = rand.nextDouble() * 2.0 - 1.0;
+            // Softer low-pass for a less "crunchy" sound
+            double smoothed = lastValue + 0.05 * (white - lastValue);
+            lastValue = smoothed;
+            buf[i] = (byte) (smoothed * 127);
         }
-        return applyEnvelope(buf);
+        return applyEnvelope(buf, 0.15); // Lowered from 0.5
     }
 
-    private static void play(byte[] buf) {
-        new Thread(() -> {
-            try {
-                AudioFormat af = new AudioFormat(SAMPLE_RATE, 8, 1, true, false);
-                SourceDataLine sdl = AudioSystem.getSourceDataLine(af);
-                sdl.open(af);
-                sdl.start();
-                sdl.write(buf, 0, buf.length);
-                sdl.drain();
-                sdl.close();
-            } catch (Exception e) {
-                // Silently fail if audio device is busy
-            }
-        }).start();
+    private static byte[] generateLevelMelody() {
+        // Concat three tones
+        byte[] t1 = generateTone(220, 0.15);
+        byte[] t2 = generateTone(277, 0.15);
+        byte[] t3 = generateTone(329, 0.3);
+        byte[] combined = new byte[t1.length + t2.length + t3.length];
+        System.arraycopy(t1, 0, combined, 0, t1.length);
+        System.arraycopy(t2, 0, combined, t1.length, t2.length);
+        System.arraycopy(t3, 0, combined, t1.length + t2.length, t3.length);
+        return combined;
+    }
+
+    private static byte[] generateTone(double freq, double duration) {
+        int samples = (int) (duration * SAMPLE_RATE);
+        byte[] buf = new byte[samples];
+        for (int i = 0; i < samples; i++) {
+            double t = (double) i / SAMPLE_RATE;
+            buf[i] = (byte) (Math.sin(2.0 * Math.PI * freq * t) * 127);
+        }
+        return applyEnvelope(buf, 0.2); // Lowered from 0.4
+    }
+
+    private static byte[] applyEnvelope(byte[] buf, double volume) {
+        int samples = buf.length;
+        int attackSamples = (int) (0.02 * SAMPLE_RATE); // 20ms attack
+        for (int i = 0; i < samples; i++) {
+            double env = i < attackSamples ? (double) i / attackSamples : 1.0 - (double)(i-attackSamples)/(samples-attackSamples);
+            buf[i] = (byte) ((buf[i] / 128.0) * env * volume * 127);
+        }
+        return buf;
     }
 }
