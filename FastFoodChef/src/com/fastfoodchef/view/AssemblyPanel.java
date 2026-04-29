@@ -5,10 +5,12 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.util.List;
+import java.util.ArrayList;
 
 public class AssemblyPanel extends JPanel {
-    private DefaultListModel<String> buildListModel;
-    private JList<String> buildList;
+    private DefaultListModel<String> burgerListModel;
+    private DefaultListModel<String> sideListModel;
+    private DefaultListModel<String> drinkListModel;
     private JPanel pantryPanel;
     private JPanel warmerPanel;
     private JButton serveButton;
@@ -42,11 +44,31 @@ public class AssemblyPanel extends JPanel {
         currentOrderLabel.setBorder(BorderFactory.createTitledBorder("Current Order"));
         rightPanel.add(currentOrderLabel, BorderLayout.NORTH);
 
-        JPanel buildContainer = new JPanel(new BorderLayout());
+        // Split build view
+        JPanel buildContainer = new JPanel(new GridLayout(3, 1));
         buildContainer.setBorder(BorderFactory.createTitledBorder("Current Build"));
-        buildListModel = new DefaultListModel<>();
-        buildList = new JList<>(buildListModel);
-        buildContainer.add(new JScrollPane(buildList), BorderLayout.CENTER);
+        
+        // Burger Section
+        JPanel burgerSection = new JPanel(new BorderLayout());
+        burgerSection.setBorder(BorderFactory.createTitledBorder("Burger"));
+        burgerListModel = new DefaultListModel<>();
+        burgerSection.add(new JScrollPane(new JList<>(burgerListModel)), BorderLayout.CENTER);
+        
+        // Side Section
+        JPanel sideSection = new JPanel(new BorderLayout());
+        sideSection.setBorder(BorderFactory.createTitledBorder("Sides"));
+        sideListModel = new DefaultListModel<>();
+        sideSection.add(new JScrollPane(new JList<>(sideListModel)), BorderLayout.CENTER);
+
+        // Drink Section
+        JPanel drinkSection = new JPanel(new BorderLayout());
+        drinkSection.setBorder(BorderFactory.createTitledBorder("Drinks"));
+        drinkListModel = new DefaultListModel<>();
+        drinkSection.add(new JScrollPane(new JList<>(drinkListModel)), BorderLayout.CENTER);
+        
+        buildContainer.add(burgerSection);
+        buildContainer.add(sideSection);
+        buildContainer.add(drinkSection);
 
         JPanel controls = new JPanel(new GridLayout(2, 1, 5, 5));
         serveButton = new JButton("SERVE CUSTOMER");
@@ -58,13 +80,24 @@ public class AssemblyPanel extends JPanel {
         
         controls.add(serveButton);
         controls.add(trashButton);
-        buildContainer.add(controls, BorderLayout.SOUTH);
         
-        rightPanel.add(buildContainer, BorderLayout.CENTER);
+        JPanel rightBottomPanel = new JPanel(new BorderLayout());
+        rightBottomPanel.add(buildContainer, BorderLayout.CENTER);
+        rightBottomPanel.add(controls, BorderLayout.SOUTH);
+        
+        rightPanel.add(rightBottomPanel, BorderLayout.CENTER);
 
         add(pantryPanel, BorderLayout.WEST);
         add(warmerContainer, BorderLayout.CENTER);
         add(rightPanel, BorderLayout.EAST);
+    }
+
+    private boolean isSide(String item) {
+        return item.equals("Fries") || item.equals("Onion Rings") || item.equals("Cheese Curds");
+    }
+
+    private boolean isDrink(String item) {
+        return item.contains("Small") || item.contains("Medium") || item.contains("Large");
     }
 
     public void update(List<FoodItem> warmer, List<String> build, com.fastfoodchef.model.Customer currentCustomer, ActionListener warmerListener) {
@@ -81,9 +114,17 @@ public class AssemblyPanel extends JPanel {
         warmerPanel.repaint();
 
         // Update Build
-        buildListModel.clear();
+        burgerListModel.clear();
+        sideListModel.clear();
+        drinkListModel.clear();
         for (String s : build) {
-            buildListModel.addElement(s);
+            if (isDrink(s)) {
+                drinkListModel.addElement(s);
+            } else if (isSide(s)) {
+                sideListModel.addElement(s);
+            } else {
+                burgerListModel.addElement(s);
+            }
         }
 
         // Update Order Info

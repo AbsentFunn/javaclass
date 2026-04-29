@@ -12,6 +12,7 @@ public class MainFrame extends JFrame {
     private GrillPanel grillPanel;
     private AssemblyPanel assemblyPanel;
     private FryerPanel fryerPanel;
+    private DrinkPanel drinkPanel;
 
     public MainFrame() {
         setTitle("Fast Food Maker");
@@ -27,11 +28,12 @@ public class MainFrame extends JFrame {
         grillPanel = new GrillPanel();
         assemblyPanel = new AssemblyPanel();
         fryerPanel = new FryerPanel();
+        drinkPanel = new DrinkPanel();
         
         mainContainer.add(counterPanel, "Counter");
         mainContainer.add(grillPanel, "Grill");
         mainContainer.add(fryerPanel, "Fryer");
-        mainContainer.add(createPlaceholderPanel("Oven Screen"), "Oven");
+        mainContainer.add(drinkPanel, "Drink");
         mainContainer.add(assemblyPanel, "Assembly");
 
         hudPanel = new HUDPanel();
@@ -76,5 +78,9 @@ public class MainFrame extends JFrame {
 
     public FryerPanel getFryerPanel() {
         return fryerPanel;
+    }
+
+    public DrinkPanel getDrinkPanel() {
+        return drinkPanel;
     }
 }

@@ -7,8 +7,15 @@ import com.fastfoodchef.model.GrillStation;
 import com.fastfoodchef.model.FryerStation;
 import com.fastfoodchef.view.MainFrame;
 
+import com.fastfoodchef.model.DrinkStation;
+import com.fastfoodchef.view.DrinkPanel;
+
 import javax.swing.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.time.Duration;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Random;
 
@@ -29,7 +36,76 @@ public class GameController {
         initAssemblyActions();
         initCounterActions();
         initFryerActions();
+        initDrinkActions();
         initGameLoop();
+    }
+
+    private void initDrinkActions() {
+        DrinkStation ds = model.getDrink();
+        DrinkPanel dp = view.getDrinkPanel();
+
+        dp.setSizeListeners(e -> {
+            String cmd = e.getActionCommand();
+            if (cmd.contains("Small")) ds.startNewDrink(DrinkStation.CupSize.SMALL);
+            else if (cmd.contains("Medium")) ds.startNewDrink(DrinkStation.CupSize.MEDIUM);
+            else if (cmd.contains("Large")) ds.startNewDrink(DrinkStation.CupSize.LARGE);
+            dp.update(ds);
+        });
+
+        dp.setIceListener(e -> {
+            if (ds.getCurrentSize() != null) {
+                ds.setHasIce(true);
+                dp.update(ds);
+            }
+        });
+
+        dp.setDrinkTypeListeners(e -> {
+            if (ds.getCurrentSize() != null) {
+                ds.setDrinkType(e.getActionCommand());
+                dp.update(ds);
+            }
+        });
+
+        dp.getDispenseBtn().addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (ds.getDrinkType() != null && !ds.isSpilled()) ds.setDispensing(true);
+            }
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                ds.setDispensing(false);
+            }
+        });
+
+        dp.setInventoryListener(e -> {
+            if (ds.isPerfectlyFilled()) {
+                String name = ds.getCurrentSize().label + " " + ds.getDrinkType() + (ds.hasIce() ? " (Ice)" : "");
+                model.addToWarmer(new FoodItem(name, model.getGameTime()));
+                ds.reset();
+                dp.update(ds);
+            }
+        });
+
+        dp.setScrubListener(e -> {
+            long now = System.currentTimeMillis();
+            if (ds.getScrubCount() == 0) {
+                ds.setLastScrubTime(now);
+            }
+            
+            if (now - ds.getLastScrubTime() > 2000) {
+                ds.setScrubCount(0); // Failed speed check
+            } else {
+                ds.setScrubCount(ds.getScrubCount() + 1);
+            }
+            ds.setLastScrubTime(now);
+
+            if (ds.getScrubCount() >= 5) {
+                ds.reset();
+            } else {
+                dp.setScrubButtonRandomLocation();
+            }
+            dp.update(ds);
+        });
     }
 
     private void initFryerActions() {
@@ -75,7 +151,7 @@ public class GameController {
             Customer current = model.getCurrentCustomer();
             if (current != null) {
                 current.setAccepted(true);
-                view.getCounterPanel().update(current, model.getCustomerQueue());
+                view.getCounterPanel().update(current, model.getCustomerQueue(), current.getArrivalTime());
             }
         });
 
@@ -84,7 +160,8 @@ public class GameController {
             if (current != null) {
                 model.serveCustomer(); // Remove from queue
                 model.setDailyRating(Math.max(0, model.getDailyRating() - 0.3)); // Penalty
-                view.getCounterPanel().update(model.getCurrentCustomer(), model.getCustomerQueue());
+                Customer next = model.getCurrentCustomer();
+                view.getCounterPanel().update(next, model.getCustomerQueue(), (next != null) ? next.getArrivalTime() : "");
             }
         });
     }
@@ -109,6 +186,14 @@ public class GameController {
         });
     }
 
+    private boolean isSide(String item) {
+        return item.equals("Fries") || item.equals("Onion Rings") || item.equals("Cheese Curds");
+    }
+
+    private boolean isDrink(String item) {
+        return item.contains("Small") || item.contains("Medium") || item.contains("Large");
+    }
+
     private void handleServe() {
         Customer current = model.getCurrentCustomer();
         if (current == null || !current.isAccepted()) return;
@@ -116,32 +201,57 @@ public class GameController {
         java.util.List<String> build = model.getCurrentBuild();
         java.util.List<String> order = current.getOrderIngredients();
 
-        // Basic comparison (exact match for now, ignoring order of ingredients)
-        boolean correct = build.size() == order.size();
-        if (correct) {
-            java.util.List<String> buildCopy = new java.util.ArrayList<>(build);
-            for (String ing : order) {
-                if (!buildCopy.remove(ing)) {
-                    correct = false;
-                    break;
-                }
-            }
+        // Split order and build
+        java.util.List<String> orderBurger = new java.util.ArrayList<>();
+        java.util.List<String> orderSides = new java.util.ArrayList<>();
+        java.util.List<String> orderDrinks = new java.util.ArrayList<>();
+        for (String s : order) {
+            if (isDrink(s)) orderDrinks.add(s);
+            else if (isSide(s)) orderSides.add(s);
+            else orderBurger.add(s);
         }
+
+        java.util.List<String> buildBurger = new java.util.ArrayList<>();
+        java.util.List<String> buildSides = new java.util.ArrayList<>();
+        java.util.List<String> buildDrinks = new java.util.ArrayList<>();
+        for (String s : build) {
+            if (isDrink(s)) buildDrinks.add(s);
+            else if (isSide(s)) buildSides.add(s);
+            else buildBurger.add(s);
+        }
+
+        // Validation
+        boolean burgerCorrect = validateSection(orderBurger, buildBurger);
+        boolean sidesCorrect = validateSection(orderSides, buildSides);
+        boolean drinksCorrect = validateSection(orderDrinks, buildDrinks);
         
-        if (correct) {
-            double basePay = 10.0;
+        if (burgerCorrect && sidesCorrect && drinksCorrect) {
+            double basePay = 10.0 + (orderSides.size() * 5.0) + (orderDrinks.size() * 3.0);
             double tip = current.getPatience() / 10.0;
             model.addRevenue(basePay + tip);
             model.setDailyRating(Math.min(5.0, model.getDailyRating() + 0.1));
             JOptionPane.showMessageDialog(view, "Order Correct! +$" + String.format("%.2f", basePay + tip));
         } else {
             model.setDailyRating(Math.max(0.0, model.getDailyRating() - 0.5));
-            JOptionPane.showMessageDialog(view, "Wrong Order! Rating decreased.");
+            String msg = "Wrong Order!";
+            if (!burgerCorrect) msg += " (Burger incorrect)";
+            if (!sidesCorrect) msg += " (Sides incorrect)";
+            if (!drinksCorrect) msg += " (Drinks incorrect)";
+            JOptionPane.showMessageDialog(view, msg + " Rating decreased.");
         }
 
         model.serveCustomer();
         model.clearBuild();
         updateAssemblyView();
+    }
+
+    private boolean validateSection(java.util.List<String> order, java.util.List<String> build) {
+        if (order.size() != build.size()) return false;
+        java.util.List<String> temp = new java.util.ArrayList<>(build);
+        for (String s : order) {
+            if (!temp.remove(s)) return false;
+        }
+        return true;
     }
 
     private void updateAssemblyView() {
@@ -186,7 +296,7 @@ public class GameController {
     }
 
     private void initNavigation() {
-        String[] screens = {"Counter", "Grill", "Fryer", "Oven", "Assembly"};
+        String[] screens = {"Counter", "Grill", "Fryer", "Drink", "Assembly"};
         for (String screen : screens) {
             view.getNavPanel().getButton(screen).addActionListener(e -> {
                 model.setActiveScreen(screen);
@@ -196,8 +306,8 @@ public class GameController {
     }
 
     private void initGameLoop() {
-        // Tick every 1 second (simulating time passing)
-        gameLoop = new Timer(1000, (ActionEvent e) -> {
+        // Tick every 100ms for smoother dispensing
+        gameLoop = new Timer(100, (ActionEvent e) -> {
             updateGame();
         });
         gameLoop.start();
@@ -205,16 +315,35 @@ public class GameController {
 
     private void updateGame() {
         tickCount++;
-        model.advanceTime(1);
+        if (tickCount % 10 == 0) model.advanceTime(1);
+        
+        // Drink Dispensing
+        DrinkStation ds = model.getDrink();
+        if (ds.isDispensing() && ds.getCurrentSize() != null && !ds.isSpilled()) {
+            ds.setFillLevel(ds.getFillLevel() + 2.5);
+            if (ds.getFillLevel() > 120) {
+                ds.setSpilled(true);
+                ds.setDispensing(false);
+            }
+            view.getDrinkPanel().update(ds);
+        }
+
+        // Cleanup Timeout
+        if (ds.isSpilled() && ds.getScrubCount() > 0) {
+            if (System.currentTimeMillis() - ds.getLastScrubTime() > 10000) {
+                ds.setScrubCount(0);
+                view.getDrinkPanel().update(ds);
+            }
+        }
         
         // Customer Logic
-        handleCustomers();
+        if (tickCount % 10 == 0) handleCustomers();
         
         // Grill Logic
-        handleGrill();
+        if (tickCount % 10 == 0) handleGrill();
         
         // Fryer Logic
-        handleFryer();
+        if (tickCount % 10 == 0) handleFryer();
         
         // Update View
         view.getHudPanel().updateTime(model.getGameTime().format(TIME_FORMATTER));
@@ -223,11 +352,14 @@ public class GameController {
         
         // Update Screens
         if (model.getActiveScreen().equals("Counter")) {
-            view.getCounterPanel().update(model.getCurrentCustomer(), model.getCustomerQueue());
+            Customer c = model.getCurrentCustomer();
+            view.getCounterPanel().update(c, model.getCustomerQueue(), (c != null) ? c.getArrivalTime() : "");
         } else if (model.getActiveScreen().equals("Grill")) {
             view.getGrillPanel().update(model.getGrill());
         } else if (model.getActiveScreen().equals("Fryer")) {
             view.getFryerPanel().update(model.getFryer());
+        } else if (model.getActiveScreen().equals("Drink")) {
+            view.getDrinkPanel().update(model.getDrink());
         } else if (model.getActiveScreen().equals("Assembly")) {
             updateAssemblyView();
         }
@@ -258,17 +390,36 @@ public class GameController {
         // Spawn customer every ~10-20 ticks
         if (tickCount % (10 + random.nextInt(10)) == 0) {
             String[] names = {"Alice", "Bob", "Charlie", "Diana", "Eve"};
-            model.addCustomer(new Customer(names[random.nextInt(names.length)]));
+            Customer c = new Customer(names[random.nextInt(names.length)]);
+            c.setArrivalTime(model.getGameTime().format(TIME_FORMATTER));
+            c.setArrivalLocalTime(model.getGameTime());
+            model.addCustomer(c);
         }
 
         // Reduce patience of the current customer
         Customer current = model.getCurrentCustomer();
-        if (current != null && current.isAccepted()) {
-            current.reducePatience(1);
-            if (current.getPatience() <= 0) {
-                // Customer leaves in anger
-                model.serveCustomer(); // Remove them
-                model.setDailyRating(Math.max(0, model.getDailyRating() - 0.2));
+        if (current != null) {
+            if (current.isAccepted()) {
+                current.reducePatience(1);
+                if (current.getPatience() <= 0) {
+                    // Customer leaves in anger
+                    model.serveCustomer(); // Remove them
+                    model.setDailyRating(Math.max(0, model.getDailyRating() - 0.2));
+                }
+            } else {
+                // Check if they've been waiting too long to be accepted
+                long minutesWaiting = Duration.between(current.getArrivalLocalTime(), model.getGameTime()).toMinutes();
+                if (minutesWaiting >= 30) {
+                    com.fastfoodchef.view.ToastManager.showToast(current.getName() + ": \"I waited way too long, I'm leaving!\"", 4);
+                    model.serveCustomer(); // Remove them
+                    model.setDailyRating(Math.max(0, model.getDailyRating() - 0.5)); // Penalty
+                    
+                    // Update view immediately if on Counter screen
+                    if (model.getActiveScreen().equals("Counter")) {
+                        Customer next = model.getCurrentCustomer();
+                        view.getCounterPanel().update(next, model.getCustomerQueue(), (next != null) ? next.getArrivalTime() : "");
+                    }
+                }
             }
         }
     }

@@ -12,7 +12,7 @@ public class NavPanel extends JPanel {
         setLayout(new FlowLayout(FlowLayout.CENTER));
         buttons = new HashMap<>();
 
-        String[] screens = {"Counter", "Grill", "Fryer", "Oven", "Assembly"};
+        String[] screens = {"Counter", "Grill", "Fryer", "Drink", "Assembly"};
         for (String screen : screens) {
             JButton button = new JButton(screen);
             buttons.put(screen, button);

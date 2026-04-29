@@ -7,3 +7,13 @@
 4: Add a food pellet that spawns at a random empty cell. When the snake eats it, grow by one segment and spawn new food. Add collision detection: hitting a wall or the snake's own body should end the game, stop movement, and show a "Game Over" message with the final score. Display the current score in the top-left corner during play. When the game is over, let the player press R to reset everything and play again.
 
 5: add powerups to the game. make them not increase speed or prevent lengthening the snake. they should be good.
+
+6: okay i was a little vague on the last one, i want you to make the powerups GHOST, MAGNET, 2X SCORE, SLOWMO, and SHIELD.
+
+7: the powerups spawn too frequently, make it so only 3 spawn per round and you can pick up all of them, and then when you eat an apple it resets all of them and spawns 3 more randomly around with the new apple.
+
+8: the grid allows for the snake to go off the screen and for stuff to spawn off the screen. can you fix the grid to match the resolution of the window and wrap around when the snake goes off the window?
+
+9: make the game look more matte, i want small gradients on the objects and have it dark mode with smooth colors.
+
+10: the double score power up doesn't work, neither does the magnet. review the logic on just those powerups.

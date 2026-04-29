@@ -9,7 +9,7 @@ public class GameState {
     private String activeScreen;
     private GrillStation grill;
     private FryerStation fryer;
-    private OvenStation oven;
+    private DrinkStation drink;
     private java.util.LinkedList<Customer> customerQueue;
     private java.util.List<FoodItem> warmer;
     private java.util.List<String> currentBuild;
@@ -21,7 +21,7 @@ public class GameState {
         this.activeScreen = "Counter";
         this.grill = new GrillStation();
         this.fryer = new FryerStation();
-        this.oven = new OvenStation();
+        this.drink = new DrinkStation();
         this.customerQueue = new java.util.LinkedList<>();
         this.warmer = new java.util.ArrayList<>();
         this.currentBuild = new java.util.ArrayList<>();
@@ -72,7 +72,7 @@ public class GameState {
 
     public GrillStation getGrill() { return grill; }
     public FryerStation getFryer() { return fryer; }
-    public OvenStation getOven() { return oven; }
+    public DrinkStation getDrink() { return drink; }
 
     public double getRevenue() {
         return revenue;
