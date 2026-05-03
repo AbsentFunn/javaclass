@@ -15,6 +15,7 @@ The Model is the "brain" of the game. It handles state, math, and time without a
         * **Spill:** Filling over 120% causes a spill, trashing the drink and requiring cleanup.
         * **Cleanup Minigame:** Requires 5 "scrubs" within 10 seconds, with each scrub clicked within 2 seconds of the previous.
 * **Customer Logic:** Generates random intervals for arrivals. Each `Customer` object contains a `RequiredIngredients` list (including Burgers, Sides, and Drinks), a `PatienceTimer`, and an `arrivalTime` timestamp.
+    * **Acceptance Timeout:** If an order is not accepted within 90 minutes of game time AFTER the customer reaches the front of the counter, the customer leaves with a penalty to the daily rating and a notification is displayed. Only the customer currently at the counter is subject to this timeout.
 
 ### **2. View (Interface)**
 The View renders the state of the Model and provides the visual layout.

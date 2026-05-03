@@ -75,7 +75,7 @@ public class AssemblyPanel extends JPanel {
         serveButton.setBackground(new Color(100, 200, 100));
         serveButton.setFont(new Font("Arial", Font.BOLD, 14));
         
-        trashButton = new JButton("TRASH BUILD");
+        trashButton = new JButton("RETURN BUILD");
         trashButton.setBackground(new Color(255, 100, 100));
         
         controls.add(serveButton);

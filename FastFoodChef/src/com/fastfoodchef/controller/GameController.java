@@ -177,6 +177,13 @@ public class GameController {
         });
 
         view.getAssemblyPanel().getTrashButton().addActionListener(e -> {
+            java.util.List<String> build = model.getCurrentBuild();
+            for (String item : build) {
+                // Return cooked items and drinks to warmer, trash pantry items
+                if (isSide(item) || isDrink(item) || item.equals("Patty")) {
+                    model.addToWarmer(new FoodItem(item, model.getGameTime()));
+                }
+            }
             model.clearBuild();
             updateAssemblyView();
         });
@@ -336,8 +343,9 @@ public class GameController {
             }
         }
         
-        // Customer Logic
-        if (tickCount % 10 == 0) handleCustomers();
+        // Customer Logic (Spawn every 1s, Reduce patience every 2s)
+        if (tickCount % 10 == 0) handleCustomerSpawning();
+        if (tickCount % 20 == 0) handleCustomerPatience();
         
         // Grill Logic
         if (tickCount % 10 == 0) handleGrill();
@@ -368,6 +376,47 @@ public class GameController {
         if (model.getGameTime().getHour() >= 22) {
             gameLoop.stop();
             JOptionPane.showMessageDialog(view, "Shift ended! Final Revenue: $" + model.getRevenue());
+        }
+    }
+
+    private void handleCustomerSpawning() {
+        // Spawn customer every ~10-20 seconds
+        if (random.nextInt(15) == 0) {
+            String[] names = {"Alice", "Bob", "Charlie", "Diana", "Eve"};
+            Customer c = new Customer(names[random.nextInt(names.length)]);
+            c.setArrivalTime(model.getGameTime().format(TIME_FORMATTER));
+            c.setArrivalLocalTime(model.getGameTime());
+            model.addCustomer(c);
+        }
+    }
+
+    private void handleCustomerPatience() {
+        Customer current = model.getCurrentCustomer();
+        if (current != null) {
+            // Initialize counter arrival time if not set
+            if (current.getCounterArrivalTime() == null) {
+                current.setCounterArrivalTime(model.getGameTime());
+            }
+
+            current.reducePatience(1);
+            
+            if (current.getPatience() <= 0) {
+                if (!current.isAccepted()) {
+                    com.fastfoodchef.view.ToastManager.showToast(current.getName() + ": \"I waited way too long, I'm leaving!\"", 4);
+                    model.setDailyRating(Math.max(0, model.getDailyRating() - 0.5));
+                } else {
+                    com.fastfoodchef.view.ToastManager.showToast(current.getName() + " left in anger!", 3);
+                    model.setDailyRating(Math.max(0, model.getDailyRating() - 0.2));
+                }
+                
+                model.serveCustomer(); // Remove them
+                
+                // Update view immediately if on Counter screen
+                if (model.getActiveScreen().equals("Counter")) {
+                    Customer next = model.getCurrentCustomer();
+                    view.getCounterPanel().update(next, model.getCustomerQueue(), (next != null) ? next.getArrivalTime() : "");
+                }
+            }
         }
     }
 
@@ -407,9 +456,14 @@ public class GameController {
                     model.setDailyRating(Math.max(0, model.getDailyRating() - 0.2));
                 }
             } else {
-                // Check if they've been waiting too long to be accepted
-                long minutesWaiting = Duration.between(current.getArrivalLocalTime(), model.getGameTime()).toMinutes();
-                if (minutesWaiting >= 30) {
+                // Initialize counter arrival time if not set (just reached front of queue)
+                if (current.getCounterArrivalTime() == null) {
+                    current.setCounterArrivalTime(model.getGameTime());
+                }
+
+                // Check if they've been waiting too long to be accepted (90 min limit)
+                long minutesWaiting = Duration.between(current.getCounterArrivalTime(), model.getGameTime()).toMinutes();
+                if (minutesWaiting >= 90) {
                     com.fastfoodchef.view.ToastManager.showToast(current.getName() + ": \"I waited way too long, I'm leaving!\"", 4);
                     model.serveCustomer(); // Remove them
                     model.setDailyRating(Math.max(0, model.getDailyRating() - 0.5)); // Penalty

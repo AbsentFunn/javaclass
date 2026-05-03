@@ -13,6 +13,7 @@ public class Customer {
     private boolean accepted;
     private String arrivalTime = "";
     private LocalTime arrivalLocalTime;
+    private LocalTime counterArrivalTime;
 
     // Visual attributes
     private Color skinColor;
@@ -112,6 +113,8 @@ public class Customer {
     public void setArrivalTime(String time) { this.arrivalTime = time; }
     public LocalTime getArrivalLocalTime() { return arrivalLocalTime; }
     public void setArrivalLocalTime(LocalTime time) { this.arrivalLocalTime = time; }
+    public LocalTime getCounterArrivalTime() { return counterArrivalTime; }
+    public void setCounterArrivalTime(LocalTime time) { this.counterArrivalTime = time; }
     public Color getSkinColor() { return skinColor; }
     public Color getHairColor() { return hairColor; }
     public Color getShirtColor() { return shirtColor; }
