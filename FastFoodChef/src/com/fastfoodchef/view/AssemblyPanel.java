@@ -19,69 +19,79 @@ public class AssemblyPanel extends JPanel {
 
     public AssemblyPanel() {
         setLayout(new BorderLayout());
+        setBackground(new Color(40, 44, 52));
 
         // Left: Pantry (Unlimited Items)
         pantryPanel = new JPanel(new GridLayout(0, 1, 5, 5));
-        pantryPanel.setBorder(BorderFactory.createTitledBorder("Pantry"));
+        pantryPanel.setBackground(new Color(33, 37, 43));
+        pantryPanel.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(new Color(60, 60, 60)), 
+            " PANTRY ", 0, 0, 
+            new Font("Segoe UI", Font.BOLD, 12), Color.WHITE));
+        
         String[] ingredients = {"Bun", "Cheese", "Lettuce", "Tomato", "Onion"};
         for (String ing : ingredients) {
-            JButton btn = new JButton(ing);
-            btn.setActionCommand("PANTRY:" + ing);
-            pantryPanel.add(btn);
+            pantryPanel.add(createPantryButton(ing));
         }
 
         // Center: Warmer (Cooked Items)
         JPanel warmerContainer = new JPanel(new BorderLayout());
-        warmerContainer.setBorder(BorderFactory.createTitledBorder("Warmer (Click to use)"));
-        warmerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        warmerContainer.add(new JScrollPane(warmerPanel), BorderLayout.CENTER);
+        warmerContainer.setOpaque(false);
+        warmerContainer.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(new Color(60, 60, 60)), 
+            " WARMER (CLICK TO USE) ", 0, 0, 
+            new Font("Segoe UI", Font.BOLD, 12), Color.WHITE));
+        
+        warmerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        warmerPanel.setBackground(new Color(40, 44, 52));
+        
+        JScrollPane warmerScroll = new JScrollPane(warmerPanel);
+        warmerScroll.setBorder(null);
+        warmerScroll.setOpaque(false);
+        warmerScroll.getViewport().setOpaque(false);
+        warmerContainer.add(warmerScroll, BorderLayout.CENTER);
 
         // Right: Current Build & Order Info
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.setPreferredSize(new Dimension(300, 0));
+        rightPanel.setBackground(new Color(33, 37, 43));
+        rightPanel.setBorder(BorderFactory.createMatteBorder(0, 2, 0, 0, new Color(60, 60, 60)));
 
         currentOrderLabel = new JLabel("<html><b>No active order</b></html>");
-        currentOrderLabel.setBorder(BorderFactory.createTitledBorder("Current Order"));
+        currentOrderLabel.setForeground(Color.WHITE);
+        currentOrderLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        currentOrderLabel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
         rightPanel.add(currentOrderLabel, BorderLayout.NORTH);
 
         // Split build view
-        JPanel buildContainer = new JPanel(new GridLayout(3, 1));
-        buildContainer.setBorder(BorderFactory.createTitledBorder("Current Build"));
+        JPanel buildContainer = new JPanel(new GridLayout(3, 1, 0, 10));
+        buildContainer.setOpaque(false);
+        buildContainer.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
         
         // Burger Section
-        JPanel burgerSection = new JPanel(new BorderLayout());
-        burgerSection.setBorder(BorderFactory.createTitledBorder("Burger"));
         burgerListModel = new DefaultListModel<>();
-        burgerSection.add(new JScrollPane(new JList<>(burgerListModel)), BorderLayout.CENTER);
+        buildContainer.add(createBuildSection("BURGER", burgerListModel));
         
         // Side Section
-        JPanel sideSection = new JPanel(new BorderLayout());
-        sideSection.setBorder(BorderFactory.createTitledBorder("Sides"));
         sideListModel = new DefaultListModel<>();
-        sideSection.add(new JScrollPane(new JList<>(sideListModel)), BorderLayout.CENTER);
+        buildContainer.add(createBuildSection("SIDES", sideListModel));
 
         // Drink Section
-        JPanel drinkSection = new JPanel(new BorderLayout());
-        drinkSection.setBorder(BorderFactory.createTitledBorder("Drinks"));
         drinkListModel = new DefaultListModel<>();
-        drinkSection.add(new JScrollPane(new JList<>(drinkListModel)), BorderLayout.CENTER);
+        buildContainer.add(createBuildSection("DRINKS", drinkListModel));
         
-        buildContainer.add(burgerSection);
-        buildContainer.add(sideSection);
-        buildContainer.add(drinkSection);
-
         JPanel controls = new JPanel(new GridLayout(2, 1, 5, 5));
-        serveButton = new JButton("SERVE CUSTOMER");
-        serveButton.setBackground(new Color(100, 200, 100));
-        serveButton.setFont(new Font("Arial", Font.BOLD, 14));
-        
-        trashButton = new JButton("RETURN BUILD");
-        trashButton.setBackground(new Color(255, 100, 100));
+        controls.setOpaque(false);
+        controls.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        serveButton = createStyledButton("SERVE CUSTOMER", new Color(76, 175, 80));
+        trashButton = createStyledButton("RETURN BUILD", new Color(244, 67, 54));
         
         controls.add(serveButton);
         controls.add(trashButton);
         
         JPanel rightBottomPanel = new JPanel(new BorderLayout());
+        rightBottomPanel.setOpaque(false);
         rightBottomPanel.add(buildContainer, BorderLayout.CENTER);
         rightBottomPanel.add(controls, BorderLayout.SOUTH);
         
@@ -90,6 +100,47 @@ public class AssemblyPanel extends JPanel {
         add(pantryPanel, BorderLayout.WEST);
         add(warmerContainer, BorderLayout.CENTER);
         add(rightPanel, BorderLayout.EAST);
+    }
+
+    private JButton createPantryButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setActionCommand("PANTRY:" + text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setBackground(new Color(60, 60, 70));
+        btn.setForeground(Color.WHITE);
+        btn.setFocusPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
+    private JPanel createBuildSection(String title, DefaultListModel<String> model) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(new Color(60, 60, 60)), 
+            " " + title + " ", 0, 0, 
+            new Font("Segoe UI", Font.BOLD, 10), new Color(150, 150, 150)));
+        
+        JList<String> list = new JList<>(model);
+        list.setBackground(new Color(40, 44, 52));
+        list.setForeground(Color.WHITE);
+        list.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        
+        JScrollPane scroll = new JScrollPane(list);
+        scroll.setBorder(null);
+        panel.add(scroll, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JButton createStyledButton(String text, Color bg) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setBackground(bg);
+        btn.setForeground(Color.WHITE);
+        btn.setFocusPainted(false);
+        btn.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 0));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        return btn;
     }
 
     private boolean isSide(String item) {
@@ -106,6 +157,14 @@ public class AssemblyPanel extends JPanel {
         for (int i = 0; i < warmer.size(); i++) {
             FoodItem item = warmer.get(i);
             JButton btn = new JButton(item.getName());
+            btn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            btn.setBackground(new Color(60, 60, 70));
+            btn.setForeground(Color.WHITE);
+            btn.setFocusPainted(false);
+            btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(80, 80, 90)),
+                BorderFactory.createEmptyBorder(8, 15, 8, 15)
+            ));
             btn.setActionCommand("WARMER:" + i);
             btn.addActionListener(warmerListener);
             warmerPanel.add(btn);
@@ -130,17 +189,17 @@ public class AssemblyPanel extends JPanel {
         // Update Order Info
         if (currentCustomer != null) {
             if (currentCustomer.isAccepted()) {
-                StringBuilder orderText = new StringBuilder("<html><b>Customer: " + currentCustomer.getName() + "</b><br>Order:<br>");
+                StringBuilder orderText = new StringBuilder("<html><b>CUSTOMER: " + currentCustomer.getName().toUpperCase() + "</b><br><br>ORDER:<br>");
                 for (String ing : currentCustomer.getOrderIngredients()) {
-                    orderText.append("- ").append(ing).append("<br>");
+                    orderText.append("- ").append(ing.toUpperCase()).append("<br>");
                 }
                 orderText.append("</html>");
                 currentOrderLabel.setText(orderText.toString());
             } else {
-                currentOrderLabel.setText("<html><b>Customer waiting at counter...</b><br>(Accept order at Counter)</html>");
+                currentOrderLabel.setText("<html><b style='color: #FFC107'>CUSTOMER WAITING AT COUNTER</b><br><br>(Accept order at Counter)</html>");
             }
         } else {
-            currentOrderLabel.setText("<html><b>No active order</b></html>");
+            currentOrderLabel.setText("<html><b>NO ACTIVE ORDER</b></html>");
         }
     }
 

@@ -9,9 +9,9 @@ public class GrillPanel extends JPanel {
     private SlotUI[][] slotUIs;
 
     public GrillPanel() {
-        setLayout(new GridLayout(2, 2, 10, 10));
+        setLayout(new GridLayout(2, 2, 20, 20));
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        setBackground(Color.DARK_GRAY);
+        setBackground(new Color(40, 44, 52));
 
         slotUIs = new SlotUI[2][2];
         for (int i = 0; i < 2; i++) {
@@ -47,11 +47,13 @@ public class GrillPanel extends JPanel {
 
         SlotUI() {
             setLayout(new BorderLayout());
-            setBackground(new Color(60, 60, 60));
-            setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+            setBackground(new Color(33, 37, 43));
+            setBorder(BorderFactory.createLineBorder(new Color(60, 60, 60), 2));
 
             statusLabel = new JLabel("Empty", SwingConstants.CENTER);
-            statusLabel.setForeground(Color.WHITE);
+            statusLabel.setForeground(new Color(100, 100, 100));
+            statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            statusLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
 
             pattyIcon = new PattyIcon();
             JLabel iconLabel = new JLabel(pattyIcon);
@@ -59,8 +61,12 @@ public class GrillPanel extends JPanel {
 
             progress = new JProgressBar(0, 200);
             progress.setStringPainted(true);
+            progress.setBackground(new Color(60, 60, 70));
+            progress.setForeground(new Color(76, 175, 80));
+            progress.setBorder(BorderFactory.createEmptyBorder());
+            progress.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
-            button = new JButton("Add Patty");
+            button = createStyledButton("Add Patty");
 
             add(statusLabel, BorderLayout.NORTH);
             
@@ -73,13 +79,28 @@ public class GrillPanel extends JPanel {
             add(button, BorderLayout.SOUTH);
         }
 
+        private JButton createStyledButton(String text) {
+            JButton btn = new JButton(text);
+            btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            btn.setBackground(new Color(60, 60, 70));
+            btn.setForeground(Color.WHITE);
+            btn.setFocusPainted(false);
+            btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(80, 80, 90)),
+                BorderFactory.createEmptyBorder(10, 0, 10, 0)
+            ));
+            btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            return btn;
+        }
+
         void update(GrillStation.GrillSlot slot) {
             if (slot.getItem() == null) {
-                statusLabel.setText("Empty");
-                statusLabel.setForeground(Color.WHITE);
+                statusLabel.setText("EMPTY");
+                statusLabel.setForeground(new Color(100, 100, 100));
                 progress.setValue(0);
                 progress.setString("");
-                button.setText("Add Patty");
+                button.setText("ADD PATTY");
+                button.setBackground(new Color(60, 60, 70));
                 button.setEnabled(true);
                 pattyIcon.setVisible(false);
                 pattyIcon.setProgress(0, false);
@@ -91,24 +112,27 @@ public class GrillPanel extends JPanel {
                 
                 if (slot.isBurned()) {
                     statusLabel.setText("BURNED!");
-                    statusLabel.setForeground(Color.RED);
-                    button.setText("Trash");
+                    statusLabel.setForeground(new Color(244, 67, 54));
+                    button.setText("TRASH");
+                    button.setBackground(new Color(244, 67, 54));
                     button.setEnabled(true);
                 } else if (slot.isReady()) {
                     statusLabel.setText("READY!");
-                    statusLabel.setForeground(Color.GREEN);
-                    button.setText("Remove");
+                    statusLabel.setForeground(new Color(76, 175, 80));
+                    button.setText("REMOVE");
+                    button.setBackground(new Color(76, 175, 80));
                     button.setEnabled(true);
                 } else if (!slot.isFlipped()) {
-                    statusLabel.setText("Cooking Side 1...");
-                    statusLabel.setForeground(Color.ORANGE);
-                    button.setText("Flip");
-                    // Enable button ONLY within the window
+                    statusLabel.setText("COOKING SIDE 1...");
+                    statusLabel.setForeground(new Color(255, 193, 7));
+                    button.setText("FLIP");
+                    button.setBackground(new Color(60, 60, 70));
                     button.setEnabled(slot.getProgress() >= 45 && slot.getProgress() <= 65);
                 } else {
-                    statusLabel.setText("Cooking Side 2...");
-                    statusLabel.setForeground(Color.YELLOW);
-                    button.setText("Wait...");
+                    statusLabel.setText("COOKING SIDE 2...");
+                    statusLabel.setForeground(new Color(255, 193, 7));
+                    button.setText("WAIT...");
+                    button.setBackground(new Color(60, 60, 70));
                     button.setEnabled(false);
                 }
                 progress.setString((int)(slot.getProgress()/2) + "%");

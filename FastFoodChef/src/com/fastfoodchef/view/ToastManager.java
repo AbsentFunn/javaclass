@@ -34,19 +34,19 @@ public class ToastManager {
             if (toastContainer == null) return;
 
             JPanel toastPanel = new JPanel();
-            toastPanel.setBackground(new Color(50, 50, 50, 230));
-            toastPanel.setBorder(BorderFactory.createLineBorder(Color.WHITE, 1));
-            toastPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 10));
-            toastPanel.setMaximumSize(new Dimension(350, 45));
+            toastPanel.setBackground(new Color(33, 37, 43, 240));
+            toastPanel.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 70), 2));
+            toastPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 25, 12));
+            toastPanel.setMaximumSize(new Dimension(380, 50));
             toastPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-            JLabel label = new JLabel(message);
+            JLabel label = new JLabel(message.toUpperCase());
             label.setForeground(Color.WHITE);
-            label.setFont(new Font("Arial", Font.BOLD, 14));
+            label.setFont(new Font("Segoe UI", Font.BOLD, 14));
             toastPanel.add(label);
 
             toastContainer.add(toastPanel);
-            toastContainer.add(Box.createVerticalStrut(5)); // Gap between toasts
+            toastContainer.add(Box.createVerticalStrut(8)); // Gap between toasts
             
             toastContainer.revalidate();
             toastContainer.repaint();
